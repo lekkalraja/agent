@@ -1,5 +1,7 @@
 # Main (unreleased)
 
+- [FEATURE] Added [Github exporter](https://github.com/infinityworks/github-exporter) integration. (@rgeyer)
+
 - [FEATURE] Added [Kafka Lag exporter](https://github.com/davidmparrott/kafka_exporter)
   integration. (@gaantunes)
 
