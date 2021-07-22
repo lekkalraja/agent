@@ -2,9 +2,6 @@
 
 - [FEATURE] Added [Github exporter](https://github.com/infinityworks/github-exporter) integration. (@rgeyer)
 
-- [FEATURE] Added [Kafka Lag exporter](https://github.com/davidmparrott/kafka_exporter)
-  integration. (@gaantunes)
-
 - [FEATURE] Add TLS config options for tempo `remote_write`s. (@mapno)
 
 - [FEATURE] Add support for OTLP HTTP trace exporting. (@mapno)
@@ -21,9 +18,6 @@
 
 - [ENHANCEMENT] Switch to drone for releases. (@mattdurham)
 
-- [BUGFIX] Fix race condition that may occur and result in a panic when
-  initializing scraping service cluster. (@rfratto)
-
 - [BUGFIX] Regex capture groups like `${1}` will now be kept intact when
   using `-config.expand-env`.
 
@@ -38,6 +32,14 @@
   have been renamed accordinly: `loki_name` is now `logs_instance_name`,
   `loki_tag` is now `logs_instance_tag`, and `backend: loki` is now
   `backend: logs_instance`. (@rfratto)
+
+# v0.17.0 (2021-07-15)
+
+- [FEATURE] Added [Kafka Lag exporter](https://github.com/davidmparrott/kafka_exporter)
+  integration. (@gaantunes)
+
+- [BUGFIX] Fix race condition that may occur and result in a panic when
+  initializing scraping service cluster. (@rfratto)
 
 # v0.16.1 (2021-06-22)
 
