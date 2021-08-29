@@ -14,10 +14,7 @@ import (
 	"github.com/grafana/agent/pkg/integrations/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 // Integration is the node_exporter integration. The integration scrapes metrics
@@ -29,15 +26,15 @@ type Integration struct {
 
 // New creates a new node_exporter integration.
 func New(log log.Logger, c *Config) (*Integration, error) {
-	promlogConfig := &promlog.Config{}
+	/*promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.Version(version.Print("blackbox_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger := promlog.New(promlogConfig)
+	logger := promlog.New(promlogConfig)*/
 
-	level.Info(logger).Log("msg", "Starting blackbox_exporter", "version", version.Info())
-	level.Info(logger).Log("build_context", version.BuildContext())
+	level.Info(log).Log("msg", "Starting blackbox_exporter", "version", version.Info())
+	level.Info(log).Log("build_context", version.BuildContext())
 
 	hup := make(chan os.Signal, 1)
 	reloadCh := make(chan chan error)
@@ -46,9 +43,9 @@ func New(log log.Logger, c *Config) (*Integration, error) {
 		for {
 			select {
 			case <-hup:
-				level.Info(logger).Log("msg", "Reloaded config file")
+				level.Info(log).Log("msg", "Reloaded config file")
 			case rc := <-reloadCh:
-				level.Info(logger).Log("msg", "Reloaded config file")
+				level.Info(log).Log("msg", "Reloaded config file")
 				rc <- nil
 			}
 		}

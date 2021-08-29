@@ -87,6 +87,8 @@ kafka_exporter: <kafka_exporter_config>
 mongodb_exporter: <mongodb_exporter_config>
 # Controls the github_exporter integration
 github_exporter: <github_exporter_config>
+# Controls the blackbox_exporter integration
+blackbox_exporter: <blackbox_exporter_config>
 
 # Automatically collect metrics from enabled integrations. If disabled,
 # integrations will be run but not scraped and thus not remote_written. Metrics
