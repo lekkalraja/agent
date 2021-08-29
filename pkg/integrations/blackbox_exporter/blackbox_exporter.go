@@ -2,56 +2,109 @@
 package blackbox_exporter //nolint:golint
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/go-kit/kit/log"
-	"github.com/grafana/agent/pkg/integrations"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/agent/pkg/integrations/config"
-	bbc "github.com/prometheus/blackbox_exporter/config"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/version"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-// Config controls the blackbox_exporter integration.
-type Config struct {
-	Common  config.Common         `yaml:",inline"`
-	Modules map[string]bbc.Module `yaml:"modules"`
+// Integration is the node_exporter integration. The integration scrapes metrics
+type Integration struct {
+	c                       *Config
+	logger                  log.Logger
+	exporterMetricsRegistry *prometheus.Registry
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler for Config.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	sc := &bbc.SafeConfig{
-		C: &bbc.Config{},
+// New creates a new node_exporter integration.
+func New(log log.Logger, c *Config) (*Integration, error) {
+	promlogConfig := &promlog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	kingpin.Version(version.Print("blackbox_exporter"))
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
+	logger := promlog.New(promlogConfig)
+
+	level.Info(logger).Log("msg", "Starting blackbox_exporter", "version", version.Info())
+	level.Info(logger).Log("build_context", version.BuildContext())
+
+	hup := make(chan os.Signal, 1)
+	reloadCh := make(chan chan error)
+	signal.Notify(hup, syscall.SIGHUP)
+	go func() {
+		for {
+			select {
+			case <-hup:
+				level.Info(logger).Log("msg", "Reloaded config file")
+			case rc := <-reloadCh:
+				level.Info(logger).Log("msg", "Reloaded config file")
+				rc <- nil
+			}
+		}
+	}()
+	return &Integration{
+		c:                       c,
+		logger:                  log,
+		exporterMetricsRegistry: prometheus.NewRegistry(),
+	}, nil
+}
+
+// MetricsHandler implements Integration.
+func (i *Integration) MetricsHandler() (http.Handler, error) {
+	probeSuccessGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "probe_success",
+		Help: "Displays whether or not the probe was a success",
+	})
+	probeDurationGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "probe_duration_seconds",
+		Help: "Returns how long the probe took to complete in seconds",
+	})
+
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(probeSuccessGauge)
+	registry.MustRegister(probeDurationGauge)
+
+	handler := promhttp.HandlerFor(
+		prometheus.Gatherers{i.exporterMetricsRegistry, registry},
+		promhttp.HandlerOpts{
+			ErrorHandling:       promhttp.ContinueOnError,
+			MaxRequestsInFlight: 0,
+			Registry:            i.exporterMetricsRegistry,
+		},
+	)
+
+	// Register blackbox_exporter_build_info metrics, generally useful for
+	// dashboards that depend on them for discovering targets.
+	if err := registry.Register(version.NewCollector(i.c.Name())); err != nil {
+		return nil, fmt.Errorf("couldn't register %s: %w", i.c.Name(), err)
 	}
 
-	sc.ReloadConfig("default_data/blackbox.yml", nil)
-
-	// Default Modules
-	c.Modules = sc.C.Modules
-
-	type plain Config
-	return unmarshal((*plain)(c))
+	return handler, nil
 }
 
-// Name returns the name of the integration that this config is for.
-func (c *Config) Name() string {
-	return "blackbox_exporter"
+// ScrapeConfigs satisfies Integration.ScrapeConfigs.
+func (i *Integration) ScrapeConfigs() []config.ScrapeConfig {
+	return []config.ScrapeConfig{{
+		JobName:     i.c.Name(),
+		MetricsPath: "/metrics",
+	}}
 }
 
-// CommonConfig returns the set of common settings shared across all integrations.
-func (c *Config) CommonConfig() config.Common {
-	return c.Common
-}
-
-// NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
-	return New(l, c)
-}
-
-func init() {
-	integrations.RegisterIntegration(&Config{})
-}
-
-// New creates a new blackbox_exporter integration. The integration scrapes metrics
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
-	/*exporter := nil
-
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(exporter)), nil*/
-	return nil, nil
+// Run satisfies Integration.Run.
+func (i *Integration) Run(ctx context.Context) error {
+	// We don't need to do anything here, so we can just wait for the context to
+	// finish.
+	<-ctx.Done()
+	return ctx.Err()
 }
