@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/agent/pkg/integrations/config"
+	"github.com/prometheus/blackbox_exporter/prober"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -24,17 +26,19 @@ type Integration struct {
 	exporterMetricsRegistry *prometheus.Registry
 }
 
+var Probers = map[string]prober.ProbeFn{
+	"http": prober.ProbeHTTP,
+	"tcp":  prober.ProbeTCP,
+	"icmp": prober.ProbeICMP,
+	"dns":  prober.ProbeDNS,
+}
+
 // New creates a new node_exporter integration.
 func New(log log.Logger, c *Config) (*Integration, error) {
-	/*promlogConfig := &promlog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
-	kingpin.Version(version.Print("blackbox_exporter"))
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
-	logger := promlog.New(promlogConfig)*/
 
 	level.Info(log).Log("msg", "Starting blackbox_exporter", "version", version.Info())
 	level.Info(log).Log("build_context", version.BuildContext())
+	level.Info(log).Log("Cofig", c.Modules)
 
 	hup := make(chan os.Signal, 1)
 	reloadCh := make(chan chan error)
@@ -67,11 +71,25 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		Name: "probe_duration_seconds",
 		Help: "Returns how long the probe took to complete in seconds",
 	})
-
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(probeSuccessGauge)
 	registry.MustRegister(probeDurationGauge)
-
+	for _, module := range i.c.Modules {
+		prober, ok := Probers[module.Prober]
+		if !ok {
+			level.Warn(i.logger).Log(fmt.Sprintf("Unknown prober %q", module.Prober), http.StatusBadRequest)
+		}
+		start := time.Now()
+		success := prober(context.Background(), "https://www.google.com/", module, registry, i.logger)
+		duration := time.Since(start).Seconds()
+		probeDurationGauge.Set(duration)
+		if success {
+			probeSuccessGauge.Set(1)
+			level.Info(i.logger).Log("msg", "Probe succeeded", "duration_seconds", duration)
+		} else {
+			level.Error(i.logger).Log("msg", "Probe failed", "duration_seconds", duration)
+		}
+	}
 	handler := promhttp.HandlerFor(
 		prometheus.Gatherers{i.exporterMetricsRegistry, registry},
 		promhttp.HandlerOpts{
