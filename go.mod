@@ -6,6 +6,9 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.3.0
 	github.com/Microsoft/hcsshim v0.8.16 // indirect
 	github.com/Shopify/sarama v1.29.1
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/andybalholm/brotli v1.0.3 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cortexproject/cortex v1.8.2-0.20210428155238-d382e1d80eaf
 	github.com/davidmparrott/kafka_exporter/v2 v2.0.1
 	github.com/docker/docker v20.10.7+incompatible // indirect
@@ -14,7 +17,7 @@ require (
 	github.com/gaantunes/mongodb_exporter v1.0.2
 	github.com/go-kit/kit v0.11.0
 	github.com/go-kit/log v0.1.0
-	github.com/go-logfmt/logfmt v0.5.0
+	github.com/go-logfmt/logfmt v0.5.1
 	github.com/go-logr/logr v0.4.0
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gogo/protobuf v1.3.2
@@ -31,7 +34,7 @@ require (
 	github.com/jsternberg/zap-logfmt v1.2.0
 	github.com/justwatchcom/elasticsearch_exporter v1.1.0
 	github.com/klauspost/compress v1.13.1 // indirect
-	github.com/miekg/dns v1.1.41
+	github.com/miekg/dns v1.1.43
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/ncabatoff/process-exporter v0.7.5
 	github.com/oklog/run v1.1.0
@@ -49,13 +52,15 @@ require (
 	github.com/prometheus-community/windows_exporter v0.0.0-00010101000000-000000000000
 	github.com/prometheus-operator/prometheus-operator v0.47.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.47.0
+	github.com/prometheus/blackbox_exporter v0.19.0 // indirect
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.29.0
+	github.com/prometheus/common v0.30.0
 	github.com/prometheus/consul_exporter v0.7.2-0.20210127095228-584c6de19f23
+	github.com/prometheus/exporter-toolkit v0.6.1 // indirect
 	github.com/prometheus/memcached_exporter v0.8.0
 	github.com/prometheus/mysqld_exporter v0.0.0-00010101000000-000000000000
 	github.com/prometheus/node_exporter v1.0.1
-	github.com/prometheus/procfs v0.6.1-0.20210313121648-b565fefb1664
+	github.com/prometheus/procfs v0.7.3
 	github.com/prometheus/prometheus v1.8.2-0.20210621150501-ff58416a0b02
 	github.com/prometheus/statsd_exporter v0.21.0
 	github.com/sirupsen/logrus v1.8.1
@@ -70,8 +75,11 @@ require (
 	go.opentelemetry.io/otel/trace v1.0.0-RC1
 	go.uber.org/atomic v1.8.0
 	go.uber.org/zap v1.18.1
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
+	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
+	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf
+	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/grpc v1.39.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.4.0
