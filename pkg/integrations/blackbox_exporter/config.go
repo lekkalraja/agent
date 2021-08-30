@@ -11,6 +11,12 @@ import (
 type Config struct {
 	Common  config.Common         `yaml:",inline"`
 	Modules map[string]bbc.Module `yaml:"modules"`
+	Targets []Target              `yaml:"targets"`
+}
+
+type Target struct {
+	Target string `yaml:"target"`
+	Module string `yaml:"module"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
