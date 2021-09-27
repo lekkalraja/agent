@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/log/level"
@@ -16,6 +15,7 @@ import (
 	"github.com/prometheus/blackbox_exporter/prober"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/version"
 )
 
@@ -24,6 +24,10 @@ type Integration struct {
 	c                       *Config
 	logger                  log.Logger
 	exporterMetricsRegistry *prometheus.Registry
+}
+
+type CustomMetrics struct {
+	mf []*io_prometheus_client.MetricFamily
 }
 
 var Probers = map[string]prober.ProbeFn{
@@ -63,40 +67,21 @@ func New(log log.Logger, c *Config) (*Integration, error) {
 // MetricsHandler implements Integration.
 func (i *Integration) MetricsHandler() (http.Handler, error) {
 	level.Info(i.logger).Log("msg", "MetricsHandler.......................")
-	probeSuccessGauge := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "probe_success",
-		Help: "Displays whether or not the probe was a success",
-	}, []string{"target"})
-	probeDurationGauge := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "probe_duration_seconds",
-		Help: "Returns how long the probe took to complete in seconds",
-	}, []string{"target"})
 	gatherers := prometheus.Gatherers{i.exporterMetricsRegistry}
 	for _, target := range i.c.Targets {
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(probeSuccessGauge)
-		registry.MustRegister(probeDurationGauge)
 		module := i.c.Modules[target.Module]
 		prober, ok := Probers[module.Prober]
 		if !ok {
 			level.Warn(i.logger).Log(fmt.Sprintf("Unknown prober %q", module.Prober), http.StatusBadRequest)
 		}
-		start := time.Now()
-		success := prober(context.Background(), target.Target, module, registry, i.logger)
-		duration := time.Since(start).Seconds()
-		probeDurationGauge.WithLabelValues(target.Target).Set(duration)
-		if success {
-			probeSuccessGauge.WithLabelValues(target.Target).Set(1)
-			level.Info(i.logger).Log("msg", "Probe succeeded", "duration_seconds", duration)
-		} else {
-			probeSuccessGauge.WithLabelValues(target.Target).Set(0)
-			level.Error(i.logger).Log("msg", "Probe failed", "duration_seconds", duration)
-		}
+		prober(context.Background(), target.Target, module, registry, i.logger)
 		// Register blackbox_exporter_build_info metrics, generally useful for
 		// dashboards that depend on them for discovering targets.
 		if err := registry.Register(version.NewCollector(i.c.Name())); err != nil {
 			return nil, fmt.Errorf("couldn't register %s: %w", i.c.Name(), err)
 		}
+		i.AddLabels(registry, target)
 		gatherers = append(gatherers, registry)
 	}
 	handler := promhttp.HandlerFor(
@@ -108,6 +93,24 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		},
 	)
 	return handler, nil
+}
+
+func (i *Integration) AddLabels(registry *prometheus.Registry, target Target) []*io_prometheus_client.MetricFamily {
+	mfs, _ := registry.Gather()
+	t := "target"
+	for _, mf := range mfs {
+		metrics := mf.GetMetric()
+		for _, m := range metrics {
+			labels := m.GetLabel()
+			lp := &io_prometheus_client.LabelPair{
+				Name:  &t,
+				Value: &target.Target,
+			}
+			labels = append(labels, lp)
+			m.Label = labels
+		}
+	}
+	return mfs
 }
 
 // ScrapeConfigs satisfies Integration.ScrapeConfigs.

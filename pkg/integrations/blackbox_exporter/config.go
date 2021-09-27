@@ -15,8 +15,14 @@ type Config struct {
 }
 
 type Target struct {
-	Target string `yaml:"target"`
-	Module string `yaml:"module"`
+	Target string  `yaml:"target"`
+	Module string  `yaml:"module"`
+	Labels []Label `yaml:"labels`
+}
+
+type Label struct {
+	Name  string `yaml:"name"`
+	Value string `yaml:"value"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
