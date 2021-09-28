@@ -26,10 +26,6 @@ type Integration struct {
 	exporterMetricsRegistry *prometheus.Registry
 }
 
-type CustomMetrics struct {
-	mf []*io_prometheus_client.MetricFamily
-}
-
 var Probers = map[string]prober.ProbeFn{
 	"http": prober.ProbeHTTP,
 	"tcp":  prober.ProbeTCP,
@@ -81,8 +77,8 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		if err := registry.Register(version.NewCollector(i.c.Name())); err != nil {
 			return nil, fmt.Errorf("couldn't register %s: %w", i.c.Name(), err)
 		}
-		i.AddLabels(registry, target)
-		gatherers = append(gatherers, registry)
+		fr := i.GetFinalRegistry(registry, target)
+		gatherers = append(gatherers, fr)
 	}
 	handler := promhttp.HandlerFor(
 		gatherers,
@@ -95,22 +91,58 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 	return handler, nil
 }
 
-func (i *Integration) AddLabels(registry *prometheus.Registry, target Target) []*io_prometheus_client.MetricFamily {
+func (i *Integration) GetFinalRegistry(registry *prometheus.Registry, target Target) *prometheus.Registry {
+	finalRegistry := prometheus.NewRegistry()
 	mfs, _ := registry.Gather()
-	t := "target"
 	for _, mf := range mfs {
 		metrics := mf.GetMetric()
+		ls := getLabels(metrics)
+		newMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: *mf.Name,
+			Help: *mf.Help,
+		}, ls)
 		for _, m := range metrics {
+			finalLabels := make(prometheus.Labels)
 			labels := m.GetLabel()
-			lp := &io_prometheus_client.LabelPair{
-				Name:  &t,
-				Value: &target.Target,
+			for _, label := range labels {
+				finalLabels[*label.Name] = *label.Value
 			}
-			labels = append(labels, lp)
-			m.Label = labels
+			finalLabels["target"] = target.Target
+			for _, l := range ls {
+				_, ok := finalLabels[l]
+				if !ok {
+					finalLabels[l] = "NOT_EXIST"
+				}
+			}
+			newMetric.With(finalLabels).Add(*m.Gauge.Value)
+		}
+		finalRegistry.MustRegister(newMetric)
+	}
+	return finalRegistry
+}
+
+func getLabels(ms []*io_prometheus_client.Metric) []string {
+	var ls []string
+	for _, m := range ms {
+		labels := m.GetLabel()
+		for _, label := range labels {
+			name := *label.Name
+			if exist(ls, name) {
+				ls = append(ls, name)
+			}
 		}
 	}
-	return mfs
+	ls = append(ls, "target")
+	return ls
+}
+
+func exist(ls []string, e string) bool {
+	for _, l := range ls {
+		if l == e {
+			return false
+		}
+	}
+	return true
 }
 
 // ScrapeConfigs satisfies Integration.ScrapeConfigs.
