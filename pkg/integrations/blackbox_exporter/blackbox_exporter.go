@@ -96,7 +96,7 @@ func (i *Integration) GetFinalRegistry(registry *prometheus.Registry, target Tar
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
 		metrics := mf.GetMetric()
-		ls := getLabels(metrics)
+		ls := i.GetLabels(metrics, target)
 		newMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: *mf.Name,
 			Help: *mf.Help,
@@ -106,6 +106,12 @@ func (i *Integration) GetFinalRegistry(registry *prometheus.Registry, target Tar
 			labels := m.GetLabel()
 			for _, label := range labels {
 				finalLabels[*label.Name] = *label.Value
+			}
+			for k, v := range i.c.Labels {
+				finalLabels[k] = v
+			}
+			for k, v := range target.Labels {
+				finalLabels[k] = v
 			}
 			finalLabels["target"] = target.Target
 			for _, l := range ls {
@@ -121,7 +127,7 @@ func (i *Integration) GetFinalRegistry(registry *prometheus.Registry, target Tar
 	return finalRegistry
 }
 
-func getLabels(ms []*io_prometheus_client.Metric) []string {
+func (i *Integration) GetLabels(ms []*io_prometheus_client.Metric, target Target) []string {
 	var ls []string
 	for _, m := range ms {
 		labels := m.GetLabel()
@@ -131,6 +137,12 @@ func getLabels(ms []*io_prometheus_client.Metric) []string {
 				ls = append(ls, name)
 			}
 		}
+	}
+	for gl := range i.c.Labels {
+		ls = append(ls, gl)
+	}
+	for tl := range target.Labels {
+		ls = append(ls, tl)
 	}
 	ls = append(ls, "target")
 	return ls
