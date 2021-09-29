@@ -1,4 +1,4 @@
-package blackbox_exporter //nolint:golint
+package citi_blackbox_exporter //nolint:golint
 
 import (
 	"github.com/go-kit/kit/log"
@@ -39,7 +39,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Name returns the name of the integration that this config is for.
 func (c *Config) Name() string {
-	return "blackbox_exporter"
+	return "citi_blackbox_exporter"
 }
 
 // CommonConfig returns the set of common settings shared across all integrations.

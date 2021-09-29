@@ -3,7 +3,7 @@ package install
 
 import (
 	_ "github.com/grafana/agent/pkg/integrations/agent"                  // register agent
-	_ "github.com/grafana/agent/pkg/integrations/blackbox_exporter"      // register blackbox_exporter
+	_ "github.com/grafana/agent/pkg/integrations/citi_blackbox_exporter" // register citi_blackbox_exporter
 	_ "github.com/grafana/agent/pkg/integrations/consul_exporter"        // register consul_exporter
 	_ "github.com/grafana/agent/pkg/integrations/dnsmasq_exporter"       // register dnsmasq_exporter
 	_ "github.com/grafana/agent/pkg/integrations/elasticsearch_exporter" // register elasticsearch_exporter

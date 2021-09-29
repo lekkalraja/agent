@@ -1,5 +1,5 @@
-// Package blackbox_exporter embeds https://github.com/prometheus/blackbox_exporter
-package blackbox_exporter //nolint:golint
+// Package citi_blackbox_exporter embeds https://github.com/prometheus/blackbox_exporter
+package citi_blackbox_exporter //nolint:golint
 
 import (
 	"context"
