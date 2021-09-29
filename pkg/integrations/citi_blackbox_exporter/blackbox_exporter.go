@@ -19,13 +19,14 @@ import (
 	"github.com/prometheus/common/version"
 )
 
-// Integration is the node_exporter integration. The integration scrapes metrics
+// Integration is the citi_blackbox_exporter integration. The integration scrapes metrics
 type Integration struct {
 	c                       *Config
 	logger                  log.Logger
 	exporterMetricsRegistry *prometheus.Registry
 }
 
+// Probers have prober type and it's handler to probe the target
 var Probers = map[string]prober.ProbeFn{
 	"http": prober.ProbeHTTP,
 	"tcp":  prober.ProbeTCP,
@@ -33,12 +34,13 @@ var Probers = map[string]prober.ProbeFn{
 	"dns":  prober.ProbeDNS,
 }
 
-// New creates a new node_exporter integration.
+// New creates a new citi_blackbox_exporter integration.
 func New(log log.Logger, c *Config) (*Integration, error) {
-	level.Info(log).Log("msg", "Starting blackbox_exporter", "version", version.Info())
+	level.Info(log).Log("msg", "Starting citi_blackbox_exporter", "version", version.Info())
 	level.Info(log).Log("build_context", version.BuildContext())
 	level.Info(log).Log("Cofig", c.Modules)
 
+	// Reload Config with SIGHUP signal
 	hup := make(chan os.Signal, 1)
 	reloadCh := make(chan chan error)
 	signal.Notify(hup, syscall.SIGHUP)
@@ -62,7 +64,6 @@ func New(log log.Logger, c *Config) (*Integration, error) {
 
 // MetricsHandler implements Integration.
 func (i *Integration) MetricsHandler() (http.Handler, error) {
-	level.Info(i.logger).Log("msg", "MetricsHandler.......................")
 	gatherers := prometheus.Gatherers{i.exporterMetricsRegistry}
 	for _, target := range i.c.Targets {
 		registry := prometheus.NewRegistry()
@@ -72,7 +73,7 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 			level.Warn(i.logger).Log(fmt.Sprintf("Unknown prober %q", module.Prober), http.StatusBadRequest)
 		}
 		prober(context.Background(), target.Target, module, registry, i.logger)
-		// Register blackbox_exporter_build_info metrics, generally useful for
+		// Register citi_blackbox_exporter_build_info metrics, generally useful for
 		// dashboards that depend on them for discovering targets.
 		if err := registry.Register(version.NewCollector(i.c.Name())); err != nil {
 			return nil, fmt.Errorf("couldn't register %s: %w", i.c.Name(), err)
@@ -91,16 +92,19 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 	return handler, nil
 }
 
+//GetFinalRegistry Prepares new Registry with the fetching metrics along with the additional labels
 func (i *Integration) GetFinalRegistry(registry *prometheus.Registry, target Target) *prometheus.Registry {
 	finalRegistry := prometheus.NewRegistry()
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
 		metrics := mf.GetMetric()
 		ls := i.GetLabels(metrics, target)
+		//Creating new Gauge Metric
 		newMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: *mf.Name,
 			Help: *mf.Help,
 		}, ls)
+		//Adding All (Existing, Global & Target Level) Labels to the newly created metric
 		for _, m := range metrics {
 			finalLabels := make(prometheus.Labels)
 			labels := m.GetLabel()
@@ -122,13 +126,16 @@ func (i *Integration) GetFinalRegistry(registry *prometheus.Registry, target Tar
 			}
 			newMetric.With(finalLabels).Add(*m.Gauge.Value)
 		}
+		//Registering the new metric
 		finalRegistry.MustRegister(newMetric)
 	}
 	return finalRegistry
 }
 
+//GetLabels prepare the labels for metrics to append
 func (i *Integration) GetLabels(ms []*io_prometheus_client.Metric, target Target) []string {
 	var ls []string
+	//Adding Exising labels to the metric
 	for _, m := range ms {
 		labels := m.GetLabel()
 		for _, label := range labels {
@@ -138,9 +145,11 @@ func (i *Integration) GetLabels(ms []*io_prometheus_client.Metric, target Target
 			}
 		}
 	}
+	//Adding Global labels to the metric
 	for gl := range i.c.Labels {
 		ls = append(ls, gl)
 	}
+	// Adding Target Level labels to the metric
 	for tl := range target.Labels {
 		ls = append(ls, tl)
 	}
@@ -148,6 +157,7 @@ func (i *Integration) GetLabels(ms []*io_prometheus_client.Metric, target Target
 	return ls
 }
 
+//exists check whether slice is having element or not
 func exist(ls []string, e string) bool {
 	for _, l := range ls {
 		if l == e {

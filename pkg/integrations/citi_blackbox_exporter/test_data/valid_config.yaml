@@ -1,0 +1,18 @@
+enabled: true
+scrape_integration: true
+scrape_interval: 5s
+scrape_timeout: 2s
+targets:
+  - target: "http://google.com"
+    module: "http_2xx"
+    labels:
+      service: "frontend"
+  - target: "http://github.com"
+    module: "http_2xx"
+    labels:
+      service: "backend"
+labels:
+  app: "ome"
+modules:
+  http_2xx:
+    prober: http
