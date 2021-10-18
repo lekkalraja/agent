@@ -43,7 +43,7 @@ func TestCitiBalckBoxExporterCases(t *testing.T) {
 			name: "Include exporter metrics",
 			cfg:  loadConfig("test_data/valid_config.yaml"),
 			expectedMetrics: []string{
-				"probe_http_duration_second",
+				"probe_http_duration_seconds",
 				"probe_http_status_code",
 			},
 		},
